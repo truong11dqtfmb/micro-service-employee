@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: position-service
+
+  config:
+    import: "optional:configserver:http://localhost:8088"
+
+  datasource:
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/microserviceposition?allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: 123456
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL57Dialect
+
+    hibernate:
+      ddlAuto: update
+
