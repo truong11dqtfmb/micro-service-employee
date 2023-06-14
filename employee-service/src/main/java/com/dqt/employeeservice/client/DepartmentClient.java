@@ -12,7 +12,7 @@ public interface DepartmentClient {
     @GetExchange("/api/department/{id}")
     Department findById(@PathVariable Long id);
 
-    @GetExchange("/api/department")
-    List<Department> findAll();
+    @GetExchange("/api/department/client")
+    List<Department> findAllClient();
 
 }

@@ -34,6 +34,9 @@ spring:
             allowedMethods:
               - GET
               - POST
+              - PUT
+              - DELETE
+              - PATCH
       routes:
         - id: employee-service
           uri: lb://employee-service

@@ -87,7 +87,7 @@ public class PositionService {
 
         Long depId = dep.getId();
 
-        List<Employee> list = employeeClient.findAll();
+        List<Employee> list = employeeClient.findAllClient();
 
         Boolean flagFound = false;
 
@@ -107,7 +107,7 @@ public class PositionService {
     }
 
 
-    public List<Position> getAllDepartments(Integer pageNumber, Integer pageSize, String sortBy, String sortDir, String keySearch) {
+    public Page<Position> getAllDepartments(Integer pageNumber, Integer pageSize, String sortBy, String sortDir, String keySearch) {
         Sort sort = Sort.by(Sort.Direction.ASC, sortBy);
         sort = sortDir.equals("asc") ? sort.ascending() : sort.descending();
 
@@ -121,9 +121,9 @@ public class PositionService {
             positionPage = this.positionRepository.findByNameContaining(keySearch, pageable);
         }
 
-        List<Position> positionList = positionPage.getContent();
+//        List<Position> positionList = positionPage.getContent();
 
-        return positionList;
+        return positionPage;
 
 
     }

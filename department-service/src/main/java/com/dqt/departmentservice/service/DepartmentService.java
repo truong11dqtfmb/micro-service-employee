@@ -53,6 +53,7 @@ public class DepartmentService {
         List<Department> list = departmentRepository.findAll();
 
         List<DepartmentDTO> listDTO = list.stream().map(department -> this.convertToDto(department)).collect(Collectors.toList());
+//        List<DepartmentDTO> listDTO = list.stream().map(this::convertToDto).collect(Collectors.toList());
 
         listDTO.forEach(department -> department.setEmployees(employeeClient.findByDepartment(department.getId())));
 
@@ -87,7 +88,7 @@ public class DepartmentService {
 
         Long depId = dep.getId();
 
-        List<Employee> list = employeeClient.findAll();
+        List<Employee> list = employeeClient.findAllClient();
 
         Boolean flagFound = false;
 
@@ -106,7 +107,7 @@ public class DepartmentService {
         return true;
     }
 
-    public List<Department> getAllDepartments(Integer pageNumber, Integer pageSize, String sortBy, String sortDir, String keySearch) {
+    public Page<Department> getAllDepartments(Integer pageNumber, Integer pageSize, String sortBy, String sortDir, String keySearch) {
         Sort sort = Sort.by(Sort.Direction.ASC, sortBy);
         sort = sortDir.equals("asc") ? sort.ascending() : sort.descending();
 
@@ -120,9 +121,9 @@ public class DepartmentService {
             departmentPage = this.departmentRepository.findByNameContaining(keySearch, pageable);
         }
 
-        List<Department> deparmentList = departmentPage.getContent();
+//        List<Department> deparmentList = departmentPage.getContent();
 
-        return deparmentList;
+        return departmentPage;
 
 
     }

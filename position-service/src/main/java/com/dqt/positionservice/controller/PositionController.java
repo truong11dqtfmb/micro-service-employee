@@ -1,13 +1,19 @@
 package com.dqt.positionservice.controller;
 
 import com.dqt.positionservice.client.EmployeeClient;
+import com.dqt.positionservice.dto.PagePositionDTO;
+import com.dqt.positionservice.dto.Pageable;
 import com.dqt.positionservice.dto.PositionDTO;
 import com.dqt.positionservice.model.ApiResponse;
 import com.dqt.positionservice.model.Position;
+import com.dqt.positionservice.repository.PositionRepository;
 import com.dqt.positionservice.service.PositionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,31 +32,45 @@ public class PositionController {
     @Autowired
     private EmployeeClient employeeClient;
 
+    @Autowired
+    private PositionRepository positionRepository;
+
 
     @PostMapping
     public Position add(@RequestBody Position position) {
         LOGGER.info("Position: Add");
         return positionService.save(position);
     }
-//    @GetMapping
-//    public List<Position> findAll() {
-//        LOGGER.info("Position: FindAll");
-//        return positionService.findAll();
-//    }
 
     @GetMapping
-    public List<Position> findAll(@RequestParam(value = "pageNumber", defaultValue = "1", required = false) Integer pageNumber,
-                                    @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
-                                    @RequestParam(value = "sortBy", defaultValue = "id", required = false) String sortBy,
-                                    @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir,
-                                    @RequestParam(value = "keySearch", defaultValue = "", required = false) String keySearch) {
+    public PagePositionDTO findAll(@RequestParam(value = "pageNumber", defaultValue = "1", required = false) Integer pageNumber,
+                                  @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
+                                  @RequestParam(value = "sortBy", defaultValue = "id", required = false) String sortBy,
+                                  @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir,
+                                  @RequestParam(value = "keySearch", defaultValue = "", required = false) String keySearch) {
         LOGGER.info("Position: FindAll");
 
 
-        List<Position> list = this.positionService.getAllDepartments(pageNumber, pageSize, sortBy, sortDir, keySearch);
+        Page<Position> page = this.positionService.getAllDepartments(pageNumber, pageSize, sortBy, sortDir, keySearch);
 
-        return list;
+        long totalPages = page.getTotalPages();
+        long totalElements = page.getTotalElements();
+        long size = page.getSize();
+        long currentPage = pageNumber;
+
+        List<Position> dtoList = page.getContent();
+
+
+        return new PagePositionDTO(dtoList, new Pageable(totalPages,totalElements,size,currentPage));
+
+
     }
+    @GetMapping("/client")
+    public List<Position> findAllClient(){
+        return positionRepository.findAll();
+    }
+
+
 
     @GetMapping("/{id}")
     public Position findById(@PathVariable Long id) {
@@ -65,14 +85,14 @@ public class PositionController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse> delete(@PathVariable Long id) {
         LOGGER.info("Position: DeleteById: {}", id);
 
         Boolean flag = positionService.delete(id);
         if (flag) {
-            return new ApiResponse(true, "Delete Position successfully!");
+            return new ResponseEntity<>(new ApiResponse(true, "Delete Position successfully!"), HttpStatus.OK);
         }
-        return new ApiResponse(false, "You can not delete Position id: {} because contain constraint" + id);
+        return new ResponseEntity<>(new ApiResponse(false, "You can not delete Position id: {} because contain constraint" + id),HttpStatus.BAD_REQUEST);
 
     }
 

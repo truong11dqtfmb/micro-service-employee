@@ -2,10 +2,7 @@ package com.dqt.employeeservice.controller;
 
 import com.dqt.employeeservice.client.DepartmentClient;
 import com.dqt.employeeservice.client.PositionClient;
-import com.dqt.employeeservice.dto.Department;
-import com.dqt.employeeservice.dto.DepartmentGroup;
-import com.dqt.employeeservice.dto.EmployeeDTO;
-import com.dqt.employeeservice.dto.PositionGroup;
+import com.dqt.employeeservice.dto.*;
 import com.dqt.employeeservice.model.ApiResponse;
 import com.dqt.employeeservice.model.Employee;
 import com.dqt.employeeservice.repository.EmployeeRepository;
@@ -15,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/employee")
@@ -75,31 +74,51 @@ public class EmployeeController {
     }
 
     @GetMapping
-    public List<EmployeeDTO> findAllDTOEmployee(@RequestParam(value = "pageNumber", defaultValue = "1", required = false) Integer pageNumber,
+    public PageEmployeeDTO findAllDTOEmployee(@RequestParam(value = "pageNumber", defaultValue = "1", required = false) Integer pageNumber,
                                             @RequestParam(value = "pageSize", defaultValue = "5", required = false) Integer pageSize,
                                             @RequestParam(value = "sortBy", defaultValue = "id", required = false) String sortBy,
                                             @RequestParam(value = "sortDir", defaultValue = "asc", required = false) String sortDir,
                                             @RequestParam(value = "keySearch", defaultValue = "", required = false) String keySearch) {
-        LOGGER.info("EmployeeDTO: FindAllDTO");
+        LOGGER.info("Employee: FindAllDTO");
 
 
-        List<EmployeeDTO> list = this.employeeService.getAllEmployees(pageNumber, pageSize, sortBy, sortDir, keySearch);
 
-        return list;
+        Page<Employee> page = this.employeeService.getAllEmployees(pageNumber, pageSize, sortBy, sortDir, keySearch);
+
+        List<Employee> employeeList = page.getContent();
+
+        List<EmployeeDTO> dtoList = employeeList.stream().map(this::convertToDTO).collect(Collectors.toList());
+
+        long totalPages = page.getTotalPages();
+        long totalElements = page.getTotalElements();
+        long size = page.getSize();
+        long currentPage = pageNumber;
+
+
+        return new PageEmployeeDTO(dtoList, new Pageable(totalPages,totalElements,size,currentPage));
 
     }
 
+    @GetMapping("/client")
+    public List<Employee> findAllClient(){
+        LOGGER.info("Client Employee: FindAllDTO");
+
+        List<Employee> employeeList = employeeRepository.findAll();
+
+        return employeeList;
+    }
+
     @GetMapping("/{id}")
-    public EmployeeDTO findByIdDTO(@PathVariable Long id) {
+    public Employee findByIdDTO(@PathVariable Long id) {
         LOGGER.info("EmployeeDTO: FindById: {}", id);
-        EmployeeDTO dto = employeeService.findByIdDTO(id);
+        Employee dto = employeeService.findById(id);
         return dto;
     }
 
     @PutMapping("/{id}")
-    public EmployeeDTO updateDTO(@PathVariable Long id, @RequestBody Employee employee) {
+    public Employee updateDTO(@PathVariable Long id, @RequestBody Employee employee) {
         LOGGER.info("Employee: UpdateById: {}", id);
-        EmployeeDTO empl = employeeService.updateDTO(employee, id);
+        Employee empl = employeeService.updateDTO(employee, id);
         return empl;
     }
 
@@ -141,7 +160,7 @@ public class EmployeeController {
         for (int i = 0; i < posGroups.size(); i++) {
             Map<String, Object> map = new HashMap<>();
 
-            Department dto = departmentClient.findById(Long.valueOf(posGroups.get(i)[0].toString()));
+            Position dto = positionClient.findById(Long.valueOf(posGroups.get(i)[0].toString()));
             Long quantity = Long.valueOf(posGroups.get(i)[1].toString());
             String positionName = dto.getName();
 
@@ -159,6 +178,19 @@ public class EmployeeController {
         return new ResponseEntity<>(json, HttpStatus.OK);
     }
 
+    public EmployeeDTO convertToDTO(Employee employee) {
+        EmployeeDTO dto = new EmployeeDTO();
+        dto.setId(employee.getId());
+        dto.setName(employee.getName());
+        dto.setAge(employee.getAge());
+
+        Department department = departmentClient.findById(employee.getDepartmentId());
+        Position position = positionClient.findById(employee.getPositionId());
+
+        dto.setPosition(position);
+        dto.setDepartment(department);
+        return dto;
+    }
 
 
 

@@ -36,9 +36,9 @@ public class EmployeeService {
 
         Long positionId = employee.getPositionId();
 
-        List<Department> departments = departmentClient.findAll();
+        List<Department> departments = departmentClient.findAllClient();
 
-        List<Position> positions = positionClient.findAll();
+        List<Position> positions = positionClient.findAllClient();
 
         Boolean flagNotFound = false;
 
@@ -107,8 +107,8 @@ public class EmployeeService {
         Long departmentId = employee.getDepartmentId();
         Long positionId = employee.getPositionId();
 
-        List<Department> departments = departmentClient.findAll();
-        List<Position> positions = positionClient.findAll();
+        List<Department> departments = departmentClient.findAllClient();
+        List<Position> positions = positionClient.findAllClient();
 
         Boolean flagNotFound = false;
 
@@ -137,16 +137,16 @@ public class EmployeeService {
         throw new ResourceNotFoundException("Department Or Position", "id", departmentId + " " + positionId);
     }
 
-    public EmployeeDTO updateDTO(Employee employee, Long id) {
+    public Employee updateDTO(Employee employee, Long id) {
 
         Employee emp = this.employeeRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Employee", "id", id + ""));
 
         Long departmentId = employee.getDepartmentId();
         Long positionId = employee.getPositionId();
 
-        List<Department> departments = departmentClient.findAll();
+        List<Department> departments = departmentClient.findAllClient();
 
-        List<Position> positions = positionClient.findAll();
+        List<Position> positions = positionClient.findAllClient();
 
         Boolean flagNotFound = false;
 
@@ -172,9 +172,11 @@ public class EmployeeService {
 
             Employee employ = employeeRepository.save(emp);
 
-            EmployeeDTO dto = this.convertToDTO(employ);
+//            EmployeeDTO dto = this.convertToDTO(employ);
 
-            return dto;
+//            return dto;
+
+            return employ;
         }
         throw new ResourceNotFoundException("Department Or Position", "id", departmentId + " " + positionId);
     }
@@ -206,7 +208,7 @@ public class EmployeeService {
     }
 
 
-    public List<EmployeeDTO> getAllEmployees(Integer pageNumber, Integer pageSize, String sortBy, String sortDir, String keySearch) {
+    public Page<Employee> getAllEmployees(Integer pageNumber, Integer pageSize, String sortBy, String sortDir, String keySearch) {
 
         Sort sort = Sort.by(Sort.Direction.ASC, sortBy);
         sort = sortDir.equals("asc") ? sort.ascending() : sort.descending();
@@ -221,11 +223,11 @@ public class EmployeeService {
             employeePage = this.employeeRepository.findByNameContaining(keySearch, pageable);
         }
 
-        List<Employee> employeeList = employeePage.getContent();
+//        List<Employee> employeeList = employeePage.getContent();
 
 
-        List<EmployeeDTO> dtoList = employeeList.stream().map(employee -> this.convertToDTO(employee)).collect(Collectors.toList());
+//        List<EmployeeDTO> dtoList = employeeList.stream().map(employee -> this.convertToDTO(employee)).collect(Collectors.toList());
 
-        return dtoList;
+        return employeePage;
     }
 }

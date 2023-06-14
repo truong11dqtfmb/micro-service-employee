@@ -12,7 +12,7 @@ public interface PositionClient {
     @GetExchange("/api/position/{id}")
     Position findById(@PathVariable Long id);
 
-    @GetExchange("/api/position")
-    List<Position> findAll();
+    @GetExchange("/api/position/client")
+    List<Position> findAllClient();
 
 }
