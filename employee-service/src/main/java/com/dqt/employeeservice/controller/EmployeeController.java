@@ -1,8 +1,10 @@
 package com.dqt.employeeservice.controller;
 
+import com.dqt.employeeservice.EmployeeServiceApplication;
 import com.dqt.employeeservice.client.DepartmentClient;
 import com.dqt.employeeservice.client.PositionClient;
 import com.dqt.employeeservice.dto.*;
+import com.dqt.employeeservice.kafka.KafkaMethod;
 import com.dqt.employeeservice.model.ApiResponse;
 import com.dqt.employeeservice.model.Employee;
 import com.dqt.employeeservice.repository.EmployeeRepository;
@@ -15,6 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -28,6 +33,13 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 
 public class EmployeeController {
+    private String topicNamePosition = "topicPosition";
+    private String topicNameDepartment = "topicDepartment";
+    private String topicNameEmployee = "topicEmployee";
+
+    @Autowired
+    private KafkaTemplate<String, Object> template;
+
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EmployeeController.class);
 
@@ -103,7 +115,7 @@ public class EmployeeController {
     public List<Employee> findAllClient(){
         LOGGER.info("Client Employee: FindAllDTO");
 
-        List<Employee> employeeList = employeeRepository.findAll();
+        List<Employee> employeeList = employeeService.findAll();
 
         return employeeList;
     }
@@ -133,7 +145,8 @@ public class EmployeeController {
             Map<String, Object> map = new HashMap<>();
 
 
-            Department dto = departmentClient.findById(Long.valueOf(depGroups.get(i)[0].toString()));
+//            Department dto = departmentClient.findById(Long.valueOf(depGroups.get(i)[0].toString()));
+            Department dto = this.deleteDepartmentFromKafka(Long.valueOf(depGroups.get(i)[0].toString()));
             Long quantity = Long.valueOf(depGroups.get(i)[1].toString());
             String departmentName = dto.getName();
 
@@ -160,7 +173,8 @@ public class EmployeeController {
         for (int i = 0; i < posGroups.size(); i++) {
             Map<String, Object> map = new HashMap<>();
 
-            Position dto = positionClient.findById(Long.valueOf(posGroups.get(i)[0].toString()));
+//            Position dto = positionClient.findById(Long.valueOf(posGroups.get(i)[0].toString()));
+            Position dto = this.deletePositionFromKafka(Long.valueOf(posGroups.get(i)[0].toString()));
             Long quantity = Long.valueOf(posGroups.get(i)[1].toString());
             String positionName = dto.getName();
 
@@ -184,13 +198,85 @@ public class EmployeeController {
         dto.setName(employee.getName());
         dto.setAge(employee.getAge());
 
-        Department department = departmentClient.findById(employee.getDepartmentId());
-        Position position = positionClient.findById(employee.getPositionId());
+//        Department department = departmentClient.findById(employee.getDepartmentId());
+        Department department = this.deleteDepartmentFromKafka(employee.getDepartmentId());
+//        Position position = positionClient.findById(employee.getPositionId());
+        Position position = this.deletePositionFromKafka(employee.getPositionId());
 
         dto.setPosition(position);
         dto.setDepartment(department);
         return dto;
     }
+
+    @Async
+    @GetMapping("/init")
+    public void initKafka(){
+        List<Employee> list = employeeRepository.findAll();
+        list.forEach(emp -> {
+            template.send(topicNameEmployee, emp);
+//            template.send(topicNameDepartment,emp);
+            System.out.println("Init Producer: " + emp.getId());
+        });
+    }
+
+    List<Position> listPosition = EmployeeServiceApplication.listPositionKafka;
+//
+//    @KafkaListener(id = "topicPosition-position-id", topics = "topicPosition")
+//    public void getPosition(Position position) {
+//        System.out.println(position);
+//        listPosition.add(position);
+//    }
+//
+    List<Department> listDepartment = EmployeeServiceApplication.listDepartmentKafka;
+//
+//    @KafkaListener(id = "topicDepartment-department-id", topics = "topicDepartment")
+//    public void getDepartment(Department department) {
+//        System.out.println(department);
+//        listDepartment.add(department);
+//    }
+//
+//    @KafkaListener(id = "topicMethod-department-id", topics = "topicDepartmentMethod")
+//    public void deleteDepartment(KafkaMethod kafkaMethod) {
+//        if(kafkaMethod.getMethod().equals("delete")){
+//            listDepartment.remove(deleteDepartmentFromKafka(kafkaMethod.getId()));
+//        }
+//    }
+//
+    Department deleteDepartmentFromKafka(Long id){
+        return listDepartment.stream().filter(department -> department.getId().equals(id)).findFirst().get();
+    }
+//
+//    @KafkaListener(id = "topicMethod-position-id", topics = "topicPositionMethod")
+//    public void deletePosition(KafkaMethod kafkaMethod) {
+//        if(kafkaMethod.getMethod().equals("delete")){
+//            listDepartment.remove(deletePositionFromKafka(kafkaMethod.getId()));
+//        }
+//    }
+//
+    Position deletePositionFromKafka(Long id){
+        return listPosition.stream().filter(position -> position.getId().equals(id)).findFirst().get();
+    }
+
+
+    public List<Department> getDistrictDepartment(){
+        return listDepartment.stream().distinct().collect(Collectors.toList());
+    }
+
+
+    public List<Position> getDistrictPosition(){
+        return listPosition.stream().distinct().collect(Collectors.toList());
+    }
+
+    @GetMapping("/getDepartmentKafka")
+    public List<Department> departments(){
+        return listDepartment;
+    }
+
+    @GetMapping("/getPositionKafka")
+    public List<Position> positions(){
+        return listPosition;
+    }
+
 
 
 

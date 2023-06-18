@@ -1,7 +1,9 @@
 package com.dqt.departmentservice.controller;
 
+import com.dqt.departmentservice.DepartmentServiceApplication;
 import com.dqt.departmentservice.client.EmployeeClient;
 import com.dqt.departmentservice.dto.DepartmentDTO;
+import com.dqt.departmentservice.dto.Employee;
 import com.dqt.departmentservice.dto.PageDepartmentDTO;
 import com.dqt.departmentservice.dto.Pageable;
 import com.dqt.departmentservice.model.ApiResponse;
@@ -15,15 +17,28 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/department")
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 
 public class DepartmentController {
+
+    private String topicNamePosition = "topicPosition";
+    private String topicNameDepartment = "topicDepartment";
+    private String topicNameEmployee = "topicEmployee";
+
+    List<Employee> list = DepartmentServiceApplication.listEmployeeKafka;
+
+    @Autowired
+    private KafkaTemplate<String, Object> template;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DepartmentController.class);
 
@@ -81,7 +96,7 @@ public class DepartmentController {
 
     @GetMapping("/client")
     public List<Department> findAllClient(){
-        return this.departmentRepository.findAll();
+        return this.departmentService.findAll();
     }
 
 
@@ -109,25 +124,46 @@ public class DepartmentController {
         return new ResponseEntity<>(new ApiResponse(false, "You can not delete Department id: {} because contain constraint" + id),HttpStatus.BAD_REQUEST);
     }
 
-    @GetMapping("/dto")
-    public List<DepartmentDTO> findAllDTO() {
-        LOGGER.info("DepartmentDTO:  FindAllDTO");
-        List<DepartmentDTO> departmentDTOS = departmentService.findAllDTO();
-        return departmentDTOS;
+//    @GetMapping("/dto")
+//    public List<DepartmentDTO> findAllDTO() {
+//        LOGGER.info("DepartmentDTO:  FindAllDTO");
+//        List<DepartmentDTO> departmentDTOS = departmentService.findAllDTO();
+//        return departmentDTOS;
+//    }
+//
+//    @GetMapping("/dto/{id}")
+//    public DepartmentDTO findByIdDTO(@PathVariable Long id) {
+//        LOGGER.info("DepartmentDTO: FindById: {}", id);
+//        DepartmentDTO dto = departmentService.findByIdDTO(id);
+//        return dto;
+//    }
+//
+//    @PutMapping("/dto/{id}")
+//    public DepartmentDTO updateDTO(@PathVariable Long id, @RequestBody Department department) {
+//        LOGGER.info("Department: UpdateById: {}", id);
+//        return departmentService.updateDTO(department, id);
+//    }
+
+    @Async
+    @GetMapping("/init")
+    public void initKafka(){
+        List<Department> list = departmentRepository.findAll();
+        list.forEach(dep -> {
+            template.send(topicNameDepartment, dep);
+//            template.send(topicNameDepartment,emp);
+            System.out.println("Init Producer: " + dep.getId());
+        });
     }
 
-    @GetMapping("/dto/{id}")
-    public DepartmentDTO findByIdDTO(@PathVariable Long id) {
-        LOGGER.info("DepartmentDTO: FindById: {}", id);
-        DepartmentDTO dto = departmentService.findByIdDTO(id);
-        return dto;
+    @GetMapping("/getEmployeeKafka")
+    public List<Employee> employeeList(){
+
+        return list;
     }
 
-    @PutMapping("/dto/{id}")
-    public DepartmentDTO updateDTO(@PathVariable Long id, @RequestBody Department department) {
-        LOGGER.info("Department: UpdateById: {}", id);
-        return departmentService.updateDTO(department, id);
-    }
+
+
+
 
 
 }

@@ -1,9 +1,12 @@
 package com.dqt.positionservice.controller;
 
+import com.dqt.positionservice.PositionServiceApplication;
 import com.dqt.positionservice.client.EmployeeClient;
+import com.dqt.positionservice.dto.Employee;
 import com.dqt.positionservice.dto.PagePositionDTO;
 import com.dqt.positionservice.dto.Pageable;
 import com.dqt.positionservice.dto.PositionDTO;
+import com.dqt.positionservice.kafka.KafkaMethod;
 import com.dqt.positionservice.model.ApiResponse;
 import com.dqt.positionservice.model.Position;
 import com.dqt.positionservice.repository.PositionRepository;
@@ -14,9 +17,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/position")
@@ -24,7 +31,19 @@ import java.util.List;
 
 public class PositionController {
 
+    private String topicNamePosition = "topicPosition";
+    private String topicNameDepartment = "topicDepartment";
+    private String topicNameEmployee = "topicEmployee";
+
+    List<Employee> list = PositionServiceApplication.listEmployeeKafka;
+
+
+    @Autowired
+    private KafkaTemplate<String, Object> template;
+
     private static final Logger LOGGER = LoggerFactory.getLogger(PositionController.class);
+
+
 
     @Autowired
     private PositionService positionService;
@@ -67,7 +86,7 @@ public class PositionController {
     }
     @GetMapping("/client")
     public List<Position> findAllClient(){
-        return positionRepository.findAll();
+        return this.positionService.findAll();
     }
 
 
@@ -96,25 +115,45 @@ public class PositionController {
 
     }
 
-    @GetMapping("/dto")
-    public List<PositionDTO> findAllDTO() {
-        LOGGER.info("PositionDTO:  FindAllDTO");
-        List<PositionDTO> positionDTOS = positionService.findAllDTO();
-        return positionDTOS;
+//    @GetMapping("/dto")
+//    public List<PositionDTO> findAllDTO() {
+//        LOGGER.info("PositionDTO:  FindAllDTO");
+//        List<PositionDTO> positionDTOS = positionService.findAllDTO();
+//        return positionDTOS;
+//    }
+//
+//    @GetMapping("/dto/{id}")
+//    public PositionDTO findByIdDTO(@PathVariable Long id) {
+//        LOGGER.info("PositionDTO: FindById: {}", id);
+//        PositionDTO dto = positionService.findByIdDTO(id);
+//        return dto;
+//    }
+//
+//    @PutMapping("/dto/{id}")
+//    public PositionDTO updateDTO(@PathVariable Long id, @RequestBody Position position) {
+//        LOGGER.info("Position: UpdateById: {}", id);
+//        return positionService.updateDTO(position, id);
+//    }
+
+    @Async
+    @GetMapping("/init")
+    public void initKafka(){
+        List<Position> list = positionRepository.findAll();
+        list.forEach(pos -> {
+            template.send(topicNamePosition, pos);
+//            template.send(topicNameDepartment,emp);
+            System.out.println("Init Producer: " + pos.getId());
+        });
     }
 
-    @GetMapping("/dto/{id}")
-    public PositionDTO findByIdDTO(@PathVariable Long id) {
-        LOGGER.info("PositionDTO: FindById: {}", id);
-        PositionDTO dto = positionService.findByIdDTO(id);
-        return dto;
+    @GetMapping("/getEmployeeKafka")
+    public List<Employee> employeeList(){
+
+        return list;
     }
 
-    @PutMapping("/dto/{id}")
-    public PositionDTO updateDTO(@PathVariable Long id, @RequestBody Position position) {
-        LOGGER.info("Position: UpdateById: {}", id);
-        return positionService.updateDTO(position, id);
-    }
+
+
 
 
 }
